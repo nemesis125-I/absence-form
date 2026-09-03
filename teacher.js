@@ -54,35 +54,87 @@ async function openDetail(id){
 function drawText(ctx,text,x,y,size=28,align="left"){ctx.save();ctx.font=`${size}px "Noto Sans KR","Malgun Gothic",sans-serif`;ctx.fillStyle="#111";ctx.textAlign=align;ctx.textBaseline="middle";ctx.fillText(text,x,y);ctx.restore()}
 function circle(ctx,x,y,r){ctx.save();ctx.strokeStyle="#111";ctx.lineWidth=5;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.stroke();ctx.restore()}
 async function loadImage(src){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src})}
+function dText(ctx, text, x, y, w, opts){
+  opts = opts || {};
+  ctx.save();
+  ctx.font = (opts.fs||20) + "px 'Noto Sans KR', 'Malgun Gothic', sans-serif";
+  ctx.fillStyle = '#111';
+  ctx.textBaseline = 'top';
+  ctx.textAlign = opts.center ? 'center' : 'left';
+  const tx = opts.center ? x + w/2 : x;
+  if(opts.wrap){
+    wrapLines(ctx, String(text), w, 2).forEach((line,i)=> ctx.fillText(line, tx, y + i*(opts.fs||18)*1.3));
+  }else{
+    ctx.fillText(String(text), tx, y);
+  }
+  ctx.restore();
+}
+function wrapLines(ctx, text, maxWidth, maxLines){
+  const words = text.split(/\s+/);
+  const lines = []; let line = '';
+  for(const word of words){
+    const test = line ? line+' '+word : word;
+    if(ctx.measureText(test).width > maxWidth && line){
+      lines.push(line); line = word;
+      if(lines.length === maxLines) break;
+    } else { line = test; }
+  }
+  if(line && lines.length < maxLines) lines.push(line);
+  return lines.slice(0, maxLines);
+}
+function dEllipse(ctx, x, y, w, h){
+  ctx.save();
+  ctx.strokeStyle = '#111';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.ellipse(x + w/2, y + h/2, w/2, h/2, 0, 0, Math.PI*2);
+  ctx.stroke();
+  ctx.restore();
+}
+function fmtYMD2(s){ if(!s) return {y:'',m:'',d:''}; s=String(s); return {y:s.slice(0,4), m:s.slice(5,7), d:s.slice(8,10)}; }
+
 async function drawForm(r){
   const canvas=$("formCanvas"),ctx=canvas.getContext("2d");ctx.clearRect(0,0,canvas.width,canvas.height);
   const bg=await loadImage("form.png");ctx.drawImage(bg,0,0,canvas.width,canvas.height);
-  // 좌표는 form.png(1190x1682) 픽셀 분석으로 정밀 보정한 값
-  drawText(ctx,`${r.grade}`,882,219,27,"center");drawText(ctx,`${r.classNo}`,970,219,27,"center");drawText(ctx,`${r.number}`,1032,219,27,"center");
-  drawText(ctx,r.studentName,918,258,27,"left");
-  if(r.reasonType==="질병") circle(ctx,365,336,24); else circle(ctx,423,336,22);
-  drawText(ctx,r.startDate.slice(2,4),337,375,24,"center");
-  drawText(ctx,String(Number(r.startDate.slice(5,7))),387,375,24,"center");
-  drawText(ctx,String(Number(r.startDate.slice(8,10))),440,375,24,"center");
-  drawText(ctx,r.endDate.slice(2,4),566,375,24,"center");
-  drawText(ctx,String(Number(r.endDate.slice(5,7))),615,375,24,"center");
-  drawText(ctx,String(Number(r.endDate.slice(8,10))),668,375,24,"center");
-  drawText(ctx,String(r.absenceDays),742,375,24,"center");
-  drawText(ctx,r.reasonDetail,300,430,24,"left");
-  drawText(ctx,r.submitDate.slice(2,4),542,896,23,"center");
-  drawText(ctx,String(Number(r.submitDate.slice(5,7))),589,896,23,"center");
-  drawText(ctx,String(Number(r.submitDate.slice(8,10))),645,896,23,"center");
-  drawText(ctx,r.studentSigner,715,937,22,"left");
-  drawText(ctx,r.guardianName,715,970,22,"left");
-  if(r.studentSignData) await drawSignature(ctx,r.studentSignData,790,917,80,40);
-  if(r.guardianSignData) await drawSignature(ctx,r.guardianSignData,790,952,80,40);
-  if(r.reasonType==="질병") circle(ctx,462,1221,22); else circle(ctx,528,1221,22);
+
+  const isSick = r.reasonType === "질병";
+  const s = fmtYMD2(r.startDate), e = fmtYMD2(r.endDate), sub = fmtYMD2(r.submitDate);
+  const cd = fmtYMD2(r.checkDate || r.submitDate);
+
+  dText(ctx, r.grade, 870, 212, 34, {center:true});
+  dText(ctx, r.classNo, 954, 212, 34, {center:true});
+  dText(ctx, r.number, 1014, 212, 34, {center:true});
+  dText(ctx, r.studentName, 916, 250, 160, {});
+
+  if(isSick) dEllipse(ctx, 334, 320, 66, 34); else dEllipse(ctx, 458, 320, 192, 34);
+
+  dText(ctx, s.y, 324, 364, 28, {center:true});
+  dText(ctx, s.m, 376, 364, 24, {center:true});
+  dText(ctx, s.d, 428, 364, 24, {center:true});
+  dText(ctx, e.y, 552, 364, 28, {center:true});
+  dText(ctx, e.m, 604, 364, 24, {center:true});
+  dText(ctx, e.d, 656, 364, 24, {center:true});
+  dText(ctx, String(r.absenceDays), 726, 364, 28, {center:true});
+
+  dText(ctx, r.reasonDetail, 290, 410, 784, {wrap:true, fs:18});
+
+  dText(ctx, sub.y.slice(2), 532, 888, 28, {center:true});
+  dText(ctx, sub.m, 576, 888, 30, {center:true});
+  dText(ctx, sub.d, 630, 888, 30, {center:true});
+
+  dText(ctx, r.studentSigner, 720, 942, 152, {});
+  if(r.studentSignData) await drawSignature(ctx, r.studentSignData, 874, 926, 136, 52);
+  dText(ctx, r.guardianName, 720, 978, 152, {});
+  if(r.guardianSignData) await drawSignature(ctx, r.guardianSignData, 874, 962, 136, 52);
+
+  if(isSick) dEllipse(ctx, 426, 1206, 72, 34); else dEllipse(ctx, 564, 1206, 208, 34);
+
   const cm=[...(r.checkMethods||[])]; const method=cm.join(", ")+(r.checkExtra?` / ${r.checkExtra}`:"");
-  drawText(ctx,method,330,1285,20,"left");
-  const cd=r.checkDate||r.submitDate;
-  drawText(ctx,cd.slice(2,4),543,1348,22,"center");
-  drawText(ctx,String(Number(cd.slice(5,7))),591,1348,22,"center");
-  drawText(ctx,String(Number(cd.slice(8,10))),646,1348,22,"center");
+  dText(ctx, method, 320, 1276, 690, {fs:18});
+
+  dText(ctx, cd.y.slice(2), 532, 1338, 28, {center:true});
+  dText(ctx, cd.m, 576, 1338, 30, {center:true});
+  dText(ctx, cd.d, 630, 1338, 30, {center:true});
 }
 function formatKorDate(s){return `${s.slice(0,4)}년 ${Number(s.slice(5,7))}월 ${Number(s.slice(8,10))}일`}
 async function drawSignature(ctx,data,x,y,w,h){try{const i=await loadImage(data);ctx.drawImage(i,x,y,w,h)}catch(e){}}
