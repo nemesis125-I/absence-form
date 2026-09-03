@@ -57,21 +57,32 @@ async function loadImage(src){return new Promise((res,rej)=>{const i=new Image()
 async function drawForm(r){
   const canvas=$("formCanvas"),ctx=canvas.getContext("2d");ctx.clearRect(0,0,canvas.width,canvas.height);
   const bg=await loadImage("form.png");ctx.drawImage(bg,0,0,canvas.width,canvas.height);
-  // 좌표는 원본 PNG 1190x1682 기준. 실제 인쇄 결과를 보며 미세조정 가능.
-  drawText(ctx,`${r.grade}`,770,220,27,"center");drawText(ctx,`${r.classNo}`,860,220,27,"center");drawText(ctx,`${r.number}`,935,220,27,"center");
-  drawText(ctx,r.studentName,780,256,27,"left");
-  if(r.reasonType==="질병") circle(ctx,333,337,25); else circle(ctx,660,337,25);
-  const sd=formatKorDate(r.startDate),ed=formatKorDate(r.endDate);
-  drawText(ctx,sd,310,380,25,"center");drawText(ctx,ed,570,380,25,"center");drawText(ctx,String(r.absenceDays),725,380,25,"center");
-  drawText(ctx,r.reasonDetail,275,430,24,"left");
-  drawText(ctx,r.submitDate.slice(0,4),505,896,23,"center");drawText(ctx,String(Number(r.submitDate.slice(5,7))),570,896,23,"center");drawText(ctx,String(Number(r.submitDate.slice(8,10))),625,896,23,"center");
-  drawText(ctx,r.studentSigner,655,932,24,"left");drawText(ctx,r.guardianName,655,974,24,"left");
-  if(r.studentSignData) await drawSignature(ctx,r.studentSignData,760,915,170,55);
-  if(r.guardianSignData) await drawSignature(ctx,r.guardianSignData,760,957,170,55);
-  if(r.reasonType==="질병") circle(ctx,330,1104,24); else circle(ctx,657,1104,24);
+  // 좌표는 form.png(1190x1682) 픽셀 분석으로 정밀 보정한 값
+  drawText(ctx,`${r.grade}`,882,219,27,"center");drawText(ctx,`${r.classNo}`,970,219,27,"center");drawText(ctx,`${r.number}`,1032,219,27,"center");
+  drawText(ctx,r.studentName,918,258,27,"left");
+  if(r.reasonType==="질병") circle(ctx,365,336,24); else circle(ctx,423,336,22);
+  drawText(ctx,r.startDate.slice(2,4),337,375,24,"center");
+  drawText(ctx,String(Number(r.startDate.slice(5,7))),387,375,24,"center");
+  drawText(ctx,String(Number(r.startDate.slice(8,10))),440,375,24,"center");
+  drawText(ctx,r.endDate.slice(2,4),566,375,24,"center");
+  drawText(ctx,String(Number(r.endDate.slice(5,7))),615,375,24,"center");
+  drawText(ctx,String(Number(r.endDate.slice(8,10))),668,375,24,"center");
+  drawText(ctx,String(r.absenceDays),742,375,24,"center");
+  drawText(ctx,r.reasonDetail,300,430,24,"left");
+  drawText(ctx,r.submitDate.slice(2,4),542,896,23,"center");
+  drawText(ctx,String(Number(r.submitDate.slice(5,7))),589,896,23,"center");
+  drawText(ctx,String(Number(r.submitDate.slice(8,10))),645,896,23,"center");
+  drawText(ctx,r.studentSigner,715,937,22,"left");
+  drawText(ctx,r.guardianName,715,970,22,"left");
+  if(r.studentSignData) await drawSignature(ctx,r.studentSignData,790,917,80,40);
+  if(r.guardianSignData) await drawSignature(ctx,r.guardianSignData,790,952,80,40);
+  if(r.reasonType==="질병") circle(ctx,462,1221,22); else circle(ctx,528,1221,22);
   const cm=[...(r.checkMethods||[])]; const method=cm.join(", ")+(r.checkExtra?` / ${r.checkExtra}`:"");
-  drawText(ctx,method,215,1160,20,"left");
-  const cd=r.checkDate||r.submitDate;drawText(ctx,cd.slice(0,4),510,1212,22,"center");drawText(ctx,String(Number(cd.slice(5,7))),575,1212,22,"center");drawText(ctx,String(Number(cd.slice(8,10))),630,1212,22,"center");
+  drawText(ctx,method,330,1285,20,"left");
+  const cd=r.checkDate||r.submitDate;
+  drawText(ctx,cd.slice(2,4),543,1348,22,"center");
+  drawText(ctx,String(Number(cd.slice(5,7))),591,1348,22,"center");
+  drawText(ctx,String(Number(cd.slice(8,10))),646,1348,22,"center");
 }
 function formatKorDate(s){return `${s.slice(0,4)}년 ${Number(s.slice(5,7))}월 ${Number(s.slice(8,10))}일`}
 async function drawSignature(ctx,data,x,y,w,h){try{const i=await loadImage(data);ctx.drawImage(i,x,y,w,h)}catch(e){}}
