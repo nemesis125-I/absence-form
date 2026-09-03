@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>결석신고서 제출</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="container">
+  <header class="hero">
+    <h1>결석신고서 제출</h1>
+    <p>학생 또는 보호자가 결석신고서를 온라인으로 제출합니다.</p>
+  </header>
+
+  <section id="message" class="message" hidden></section>
+
+  <form id="studentForm" novalidate>
+    <div class="card">
+      <h2>1. 학생 정보</h2>
+      <label>학번 5자리
+        <input id="studentNo" name="studentNo" inputmode="numeric" maxlength="5" placeholder="예: 30512" required>
+      </label>
+      <p id="classPreview" class="hint">학번을 입력하면 학년·반·번호가 자동 표시됩니다.</p>
+
+      <label>이름
+        <input id="studentName" name="studentName" maxlength="30" required>
+      </label>
+    </div>
+
+    <div class="card">
+      <h2>2. 결석 정보</h2>
+      <fieldset>
+        <legend>결석 사유</legend>
+        <label class="radio"><input type="radio" name="reasonType" value="질병" required> 질병</label>
+        <label class="radio"><input type="radio" name="reasonType" value="인정"> 인정(경조사 포함)</label>
+      </fieldset>
+
+      <label>사유 상세
+        <textarea id="reasonDetail" name="reasonDetail" rows="4" maxlength="500" required></textarea>
+      </label>
+
+      <div class="stack">
+        <label>결석 시작일
+          <input id="startDate" name="startDate" type="date" required>
+        </label>
+        <label>결석 종료일
+          <input id="endDate" name="endDate" type="date" required>
+        </label>
+      </div>
+
+      <label>결석 일수
+        <input id="absenceDays" name="absenceDays" type="number" min="1" step="1" required>
+      </label>
+      <p id="daysHint" class="hint">주말·공휴일을 제외해 자동 계산합니다. 학교 재량휴업일 등은 직접 수정하세요.</p>
+
+      <label>작성일(제출일)
+        <input id="submitDate" name="submitDate" type="date" required>
+      </label>
+    </div>
+
+    <div class="card">
+      <h2>3. 증빙서류</h2>
+      <label class="check">
+        <input id="evidenceYes" type="checkbox">
+        증빙서류가 있음
+      </label>
+      <p id="evidenceNotice" class="notice" hidden>
+        사진 파일을 첨부해 주세요. 원본은 담임교사에게 별도 제출합니다.
+      </p>
+      <input id="evidenceFile" type="file" accept="image/*" hidden>
+      <button id="chooseEvidence" type="button" class="secondary" hidden>사진 선택</button>
+      <p id="evidenceName" class="hint"></p>
+    </div>
+
+    <div class="card">
+      <h2>4. 학생 서명</h2>
+      <label>학생 이름
+        <input id="studentSigner" maxlength="30" required>
+      </label>
+      <div class="signature-wrap">
+        <canvas id="studentSign" class="signature" width="900" height="300"></canvas>
+        <button type="button" class="secondary clear-sign" data-canvas="studentSign">서명 지우기</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>5. 보호자 서명</h2>
+      <label>보호자 이름
+        <input id="guardianName" maxlength="30" required>
+      </label>
+      <div class="signature-wrap">
+        <canvas id="guardianSign" class="signature" width="900" height="300"></canvas>
+        <button type="button" class="secondary clear-sign" data-canvas="guardianSign">서명 지우기</button>
+      </div>
+    </div>
+
+    <button id="submitBtn" class="primary submit" type="submit">결석신고서 제출</button>
+  </form>
+
+  <div id="complete" class="complete" hidden>
+    <h2>제출 완료</h2>
+    <p>결석신고서가 정상적으로 제출되었습니다.</p>
+    <p>담임교사의 확인 후 처리됩니다.</p>
+  </div>
+</main>
+
+<iframe name="postFrame" id="postFrame" class="hidden-frame" title="전송용"></iframe>
+<script src="config.js"></script>
+<script src="student.js"></script>
+</body>
+</html>
