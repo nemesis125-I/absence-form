@@ -108,10 +108,10 @@ async function drawForm(r){
 
   if(isSick) dEllipse(ctx, 334, 320, 66, 34); else dEllipse(ctx, 458, 320, 192, 34);
 
-  dText(ctx, s.y.slice(2), 315, 364, 28, {center:true});
+  dText(ctx, s.y.slice(2), 309, 364, 28, {center:true});
   dText(ctx, s.m, 376, 364, 24, {center:true});
   dText(ctx, s.d, 428, 364, 24, {center:true});
-  dText(ctx, e.y.slice(2), 543, 364, 28, {center:true});
+  dText(ctx, e.y.slice(2), 537, 364, 28, {center:true});
   dText(ctx, e.m, 604, 364, 24, {center:true});
   dText(ctx, e.d, 656, 364, 24, {center:true});
   dText(ctx, String(r.absenceDays), 726, 364, 28, {center:true});
