@@ -28,18 +28,29 @@ async function loadRecords(){
 function renderList(){
   const g=$("gradeFilter").value,c=$("classFilter").value;
   const filtered=records.filter(r=>(!g||String(r.grade)===g)&&(!c||String(r.classNo)===c));
+  const detailEl=$("detail");
+  const wasOpenId = (!detailEl.hidden && current) ? current.id : null;
+  if(detailEl.parentElement===$("list")) $("app").appendChild(detailEl);
   $("list").innerHTML=filtered.length?filtered.map(r=>`
     <div class="item" data-id="${escapeHtml(r.id)}">
       <div class="item-top"><span>${escapeHtml(r.studentNo)} ${escapeHtml(r.studentName)}</span><span class="status ${r.status==="확인완료"?"done":""}">${escapeHtml(r.status||"확인대기")}</span></div>
       <div>${escapeHtml(r.startDate)} ~ ${escapeHtml(r.endDate)} · ${escapeHtml(r.reasonType)}</div>
       <div class="hint">제출일 ${escapeHtml(r.submitDate)}</div>
     </div>`).join(""):"<div class='card'>제출된 결석신고서가 없습니다.</div>";
-  document.querySelectorAll(".item").forEach(x=>x.addEventListener("click",()=>openDetail(x.dataset.id)));
+  document.querySelectorAll(".item").forEach(x=>x.addEventListener("click",()=>openDetail(x.dataset.id, x)));
+  if(wasOpenId){
+    const matchEl=$("list").querySelector(`.item[data-id="${CSS.escape(wasOpenId)}"]`);
+    if(matchEl) matchEl.insertAdjacentElement('afterend', detailEl);
+    else detailEl.hidden=true;
+  }
 }
 function escapeHtml(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
-async function openDetail(id){
+async function openDetail(id, itemEl){
   const meta=records.find(r=>r.id===id);if(!meta)return;
-  $("detail").hidden=false;$("list").hidden=true;$("detailTitle").textContent=`${meta.studentNo} ${meta.studentName} · 결석신고서`;
+  const detailEl=$("detail");
+  detailEl.hidden=false;
+  if(itemEl) itemEl.insertAdjacentElement('afterend', detailEl);
+  $("detailTitle").textContent=`${meta.studentNo} ${meta.studentName} · 결석신고서`;
   showMsg("detailMessage","상세 자료를 불러오는 중...");
   try{
     const data=await jsonp({action:"detail",auth:hash4(CONFIG.TEACHER_PASSWORD),id});
@@ -49,7 +60,7 @@ async function openDetail(id){
     $("checkExtra").value=current.checkExtra||"";$("detailMessage").hidden=true;
     await drawForm(current);
   }catch(e){showMsg("detailMessage",e.message,true)}
-  window.scrollTo({top:0,behavior:"smooth"});
+  detailEl.scrollIntoView({behavior:"smooth", block:"start"});
 }
 function drawText(ctx,text,x,y,size=28,align="left"){ctx.save();ctx.font=`${size}px "Noto Sans KR","Malgun Gothic",sans-serif`;ctx.fillStyle="#111";ctx.textAlign=align;ctx.textBaseline="middle";ctx.fillText(text,x,y);ctx.restore()}
 function circle(ctx,x,y,r){ctx.save();ctx.strokeStyle="#111";ctx.lineWidth=5;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.stroke();ctx.restore()}
