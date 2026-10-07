@@ -5,12 +5,12 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "여기에_apiKey_붙여넣기",
+  apiKey: "AIzaSyBkIO3k4L8mwFlXfXXmMkzshoPqfkJ5VFc",
   authDomain: "absence-form-9a72b.firebaseapp.com",
   projectId: "absence-form-9a72b",
   storageBucket: "absence-form-9a72b.firebasestorage.app",
-  messagingSenderId: "여기에_messagingSenderId_붙여넣기",
-  appId: "여기에_appId_붙여넣기"
+  messagingSenderId: "94695506068",
+  appId: "1:94695506068:web:2540135ce7bf5d4e563481"
 };
 
 // 교사 계정 이메일 (보안 규칙의 isTeacher()에 적힌 이메일과 같아야 합니다)
