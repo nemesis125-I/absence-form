@@ -66,12 +66,12 @@
         <input id="evidenceYes" type="checkbox">
         증빙서류가 있음
       </label>
-      <p id="evidenceNotice" class="notice" hidden>
-        사진 파일을 첨부해 주세요. 원본은 담임교사에게 별도 제출합니다.
-      </p>
-      <input id="evidenceFile" type="file" accept="image/*" hidden>
-      <button id="chooseEvidence" type="button" class="secondary" hidden>사진 선택</button>
-      <p id="evidenceName" class="hint"></p>
+      <div id="evidenceBox" hidden>
+        <label>증빙서류 이름
+          <input id="evidenceTitle" maxlength="50" placeholder="예: 진료확인서, 처방전, 사망진단서">
+        </label>
+        <p class="notice">증빙서류 원본은 담임선생님께 직접 제출해 주세요.</p>
+      </div>
     </div>
 
     <div class="card">

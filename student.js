@@ -44,34 +44,12 @@ function calcDays(){
 }
 $("startDate").addEventListener("change",calcDays); $("endDate").addEventListener("change",calcDays);
 
-let evidenceFile=null;
 $("evidenceYes").addEventListener("change",()=>{
   const on=$("evidenceYes").checked;
-  $("evidenceNotice").hidden=!on; $("chooseEvidence").hidden=!on;
-  if(!on){evidenceFile=null;$("evidenceFile").value="";$("evidenceName").textContent="";}
+  $("evidenceBox").hidden=!on;
+  if(on){ alert("증빙서류 원본은 담임선생님께 직접 제출해 주세요."); $("evidenceTitle").focus(); }
+  else $("evidenceTitle").value="";
 });
-$("chooseEvidence").addEventListener("click",()=>$("evidenceFile").click());
-$("evidenceFile").addEventListener("change",()=>{
-  const f=$("evidenceFile").files[0]; if(!f)return;
-  if(f.size>15*1024*1024){setMessage("증빙사진은 15MB 이하로 선택해주세요.","error");$("evidenceFile").value="";return;}
-  evidenceFile=f; $("evidenceName").textContent=f.name;
-});
-// 증빙사진을 최대 1280px, JPEG로 줄여 Firestore 문서 한도(보안 규칙 60만 자) 안에 들어가게 합니다.
-async function compressImage(file){
-  const url=URL.createObjectURL(file);
-  try{
-    const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error("사진을 읽을 수 없습니다. 다른 사진을 선택해주세요."));i.src=url});
-    let max=1280;
-    for(let tries=0;tries<8;tries++){
-      const scale=Math.min(1,max/Math.max(img.width,img.height));
-      const c=document.createElement("canvas"); c.width=Math.round(img.width*scale); c.height=Math.round(img.height*scale);
-      const ctx=c.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,c.width,c.height); ctx.drawImage(img,0,0,c.width,c.height);
-      for(const q of [0.8,0.65,0.5]){const d=c.toDataURL("image/jpeg",q); if(d.length<580000) return d;}
-      max=Math.round(max*0.8);
-    }
-    throw new Error("증빙사진 용량을 줄이지 못했습니다. 다른 사진을 선택해주세요.");
-  }finally{URL.revokeObjectURL(url)}
-}
 
 function setupSignature(canvas){
   const ctx=canvas.getContext("2d"); let drawing=false, has=false;
@@ -95,14 +73,14 @@ $("studentForm").addEventListener("submit",async e=>{
   if(!$("reasonDetail").value.trim()){setMessage("사유 상세를 입력해주세요.","error");return;}
   if(!$("startDate").value||!$("endDate").value){setMessage("결석 시작일과 종료일을 입력해주세요.","error");return;}
   if(!$("absenceDays").value || Number($("absenceDays").value)<1){setMessage("결석 일수를 확인해주세요.","error");return;}
-  if($("evidenceYes").checked&&!evidenceFile){setMessage("증빙사진을 선택하거나 '증빙서류가 있음' 체크를 해제해주세요.","error");return;}
+  const evidenceTitle=$("evidenceYes").checked?$("evidenceTitle").value.trim():"";
+  if($("evidenceYes").checked&&!evidenceTitle){setMessage("증빙서류 이름을 입력하거나 '증빙서류가 있음' 체크를 해제해주세요.","error");return;}
   const studentSignData=studentSig.data(), guardianSignData=guardianSig.data();
   if(!studentSignData||!guardianSignData){setMessage("학생과 보호자 서명을 모두 입력해주세요.","error");return;}
   if(studentSignData.length>=200000||guardianSignData.length>=200000){setMessage("서명이 너무 복잡합니다. 서명을 지우고 다시 해주세요.","error");return;}
   const btn=$("submitBtn"); btn.disabled=true; btn.textContent="제출 중...";
   try{
     const files={studentSignData,guardianSignData};
-    if($("evidenceYes").checked) files.evidenceData=await compressImage(evidenceFile);
     const ref=doc(collection(db,"absences"));
     const batch=writeBatch(db);
     batch.set(ref,{
@@ -113,7 +91,7 @@ $("studentForm").addEventListener("submit",async e=>{
       reasonDetail:$("reasonDetail").value.trim(),
       startDate:$("startDate").value, endDate:$("endDate").value,
       absenceDays:Number($("absenceDays").value), submitDate:$("submitDate").value,
-      evidenceYes:$("evidenceYes").checked?"Y":"N",
+      evidenceYes:$("evidenceYes").checked?"Y":"N", evidenceTitle,
       studentSigner:$("studentSigner").value.trim(),
       guardianName:$("guardianName").value.trim(),
       checkMethods:[], checkExtra:"", checkDate:"",

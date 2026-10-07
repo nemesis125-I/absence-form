@@ -24,7 +24,7 @@ function renderList(){
   $("list").innerHTML=filtered.length?filtered.map(r=>`
     <div class="item" data-id="${escapeHtml(r.id)}">
       <div class="item-top"><span>${escapeHtml(r.studentNo)} ${escapeHtml(r.studentName)}</span><span class="status ${r.status==="확인완료"?"done":""}">${r.status==="확인완료"?"확인완료":"확인대기"}</span></div>
-      <div>${escapeHtml(r.startDate)} ~ ${escapeHtml(r.endDate)} · ${escapeHtml(r.reasonType)}${r.evidenceYes==="Y"?" · 증빙있음":""}</div>
+      <div>${escapeHtml(r.startDate)} ~ ${escapeHtml(r.endDate)} · ${escapeHtml(r.reasonType)}${r.evidenceYes==="Y"?" · 증빙: "+escapeHtml(r.evidenceTitle||"있음"):""}</div>
       <div class="hint">제출일 ${escapeHtml(r.submitDate)}</div>
     </div>`).join(""):"<div class='card'>제출된 결석신고서가 없습니다.</div>";
   document.querySelectorAll(".item").forEach(x=>x.addEventListener("click",()=>openDetail(x.dataset.id, x)));
@@ -49,7 +49,9 @@ async function openDetail(id, itemEl){
     if(current!==meta)return;
     Object.assign(meta,f.exists()?f.data():{});
     document.querySelectorAll('input[name="checkMethod"]').forEach(x=>x.checked=(meta.checkMethods||[]).includes(x.value));
-    $("checkExtra").value=meta.checkExtra||"";$("detailMessage").hidden=true;
+    $("checkExtra").value=meta.checkExtra||"";$("checkDate").value=meta.checkDate||todayStr();
+    document.querySelectorAll('input[name="reasonFix"]').forEach(x=>x.checked=x.value===meta.reasonType);
+    $("detailMessage").hidden=true;
     if(meta.evidenceData){$("evidenceImg").src=meta.evidenceData;$("evidenceBox").hidden=false;}
     await drawForm(meta);
   }catch(e){console.error(e);showMsg("detailMessage","상세 자료를 불러오지 못했습니다. ("+(e.code||e.message)+")",true)}
@@ -103,7 +105,7 @@ async function drawForm(r){
 
   const isSick = r.reasonType === "질병";
   const s = fmtYMD2(r.startDate), e = fmtYMD2(r.endDate), sub = fmtYMD2(r.submitDate);
-  const cd = fmtYMD2(r.checkDate || r.submitDate);
+  const cd = fmtYMD2(r.checkDate || todayStr());
 
   dText(ctx, r.grade, 870, 212, 34, {center:true});
   dText(ctx, r.classNo, 954, 212, 34, {center:true});
@@ -121,6 +123,7 @@ async function drawForm(r){
   dText(ctx, String(r.absenceDays), 726, 364, 28, {center:true});
 
   dText(ctx, r.reasonDetail, 290, 410, 784, {wrap:true, fs:18});
+  if(r.evidenceTitle) dText(ctx, r.evidenceTitle, 720, 457, 345, {fs:18});
 
   dText(ctx, sub.y.slice(2), 532, 888, 28, {center:true});
   dText(ctx, sub.m, 576, 888, 30, {center:true});
@@ -163,11 +166,18 @@ $("closeDetail").addEventListener("click",()=>{$("detail").hidden=true;$("list")
 $("saveCheck").addEventListener("click",async()=>{
   if(!current)return;const r=current;
   const methods=[...document.querySelectorAll('input[name="checkMethod"]:checked')].map(x=>x.value);
-  const data={checkMethods:methods,checkExtra:$("checkExtra").value.trim(),checkDate:todayStr()};
+  const data={checkMethods:methods,checkExtra:$("checkExtra").value.trim(),checkDate:$("checkDate").value||todayStr()};
   showMsg("detailMessage","저장 중...");
   try{await updateDoc(doc(db,"absences",r.id),data);Object.assign(r,data);await drawForm(r);showMsg("detailMessage","확인내용을 저장했습니다.")}
   catch(e){console.error(e);showMsg("detailMessage","저장하지 못했습니다. ("+(e.code||e.message)+")",true)}
 });
+// 확인 일자를 바꾸면 미리보기에 바로 반영 (저장은 "확인내용 저장" 버튼)
+$("checkDate").addEventListener("change",()=>{if(current)drawForm({...current,checkDate:$("checkDate").value})});
+document.querySelectorAll('input[name="reasonFix"]').forEach(x=>x.addEventListener("change",async()=>{
+  if(!current||!x.checked)return;const r=current,prev=r.reasonType;
+  try{await updateDoc(doc(db,"absences",r.id),{reasonType:x.value});r.reasonType=x.value;renderList();await drawForm({...r,checkDate:$("checkDate").value});showMsg("detailMessage",`결석 사유를 '${x.value}'(으)로 수정했습니다.`)}
+  catch(e){console.error(e);document.querySelectorAll('input[name="reasonFix"]').forEach(y=>y.checked=y.value===prev);showMsg("detailMessage","사유를 수정하지 못했습니다. ("+(e.code||e.message)+")",true)}
+}));
 $("toggleDone").addEventListener("click",async()=>{
   if(!current)return;const r=current;const next=r.status==="확인완료"?"대기":"확인완료";
   try{await updateDoc(doc(db,"absences",r.id),{status:next});r.status=next;renderList();showMsg("detailMessage",`상태를 ${next==="확인완료"?"확인 완료":"확인 대기"}로 변경했습니다.`)}
