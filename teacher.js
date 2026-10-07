@@ -49,7 +49,7 @@ async function openDetail(id, itemEl){
     if(current!==meta)return;
     Object.assign(meta,f.exists()?f.data():{});
     document.querySelectorAll('input[name="checkMethod"]').forEach(x=>x.checked=(meta.checkMethods||[]).includes(x.value));
-    $("checkExtra").value=meta.checkExtra||"";$("checkDate").value=meta.checkDate||todayStr();
+    $("checkExtra").value=meta.checkExtra||"";syncExtra();$("checkDate").value=meta.checkDate||todayStr();
     document.querySelectorAll('input[name="reasonFix"]').forEach(x=>x.checked=x.value===meta.reasonType);
     $("detailMessage").hidden=true;
     if(meta.evidenceData){$("evidenceImg").src=meta.evidenceData;$("evidenceBox").hidden=false;}
@@ -166,11 +166,15 @@ $("closeDetail").addEventListener("click",()=>{$("detail").hidden=true;$("list")
 $("saveCheck").addEventListener("click",async()=>{
   if(!current)return;const r=current;
   const methods=[...document.querySelectorAll('input[name="checkMethod"]:checked')].map(x=>x.value);
-  const data={checkMethods:methods,checkExtra:$("checkExtra").value.trim(),checkDate:$("checkDate").value||todayStr()};
+  const data={checkMethods:methods,checkExtra:methods.includes("기타")?$("checkExtra").value.trim():"",checkDate:$("checkDate").value||todayStr()};
   showMsg("detailMessage","저장 중...");
   try{await updateDoc(doc(db,"absences",r.id),data);Object.assign(r,data);await drawForm(r);showMsg("detailMessage","확인내용을 저장했습니다.")}
   catch(e){console.error(e);showMsg("detailMessage","저장하지 못했습니다. ("+(e.code||e.message)+")",true)}
 });
+// '기타'를 체크했을 때만 기타 내용 칸을 보여줌
+const etcBox=document.querySelector('input[name="checkMethod"][value="기타"]');
+function syncExtra(){$("checkExtraWrap").hidden=!etcBox.checked}
+etcBox.addEventListener("change",()=>{syncExtra();if(etcBox.checked)$("checkExtra").focus()});
 // 확인 일자를 바꾸면 미리보기에 바로 반영 (저장은 "확인내용 저장" 버튼)
 $("checkDate").addEventListener("change",()=>{if(current)drawForm({...current,checkDate:$("checkDate").value})});
 document.querySelectorAll('input[name="reasonFix"]').forEach(x=>x.addEventListener("change",async()=>{
