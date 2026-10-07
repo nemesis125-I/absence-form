@@ -1,29 +1,19 @@
-let records=[], current=null, loggedIn=false;
+import { app, db, configReady, TEACHER_EMAIL, PASSWORD_SUFFIX } from "./firebase.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { collection, doc, getDoc, getDocs, query, orderBy, updateDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const auth=getAuth(app);
+let records=[], current=null;
 const $=id=>document.getElementById(id);
 function showMsg(id,text,error=false){const e=$(id);e.hidden=false;e.textContent=text;e.className="message"+(error?" error":"")}
-function hash4(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return (h>>>0).toString(16)}
-function jsonp(params){
-  return new Promise((resolve,reject)=>{
-    const cb="cb_"+Date.now()+"_"+Math.random().toString(16).slice(2);
-    const script=document.createElement("script");
-    const q=new URLSearchParams({...params,callback:cb});
-    window[cb]=(data)=>{delete window[cb];script.remove();resolve(data)};
-    script.onerror=()=>{delete window[cb];script.remove();reject(new Error("서버 응답을 받지 못했습니다."))};
-    script.src=CONFIG.GAS_URL+"?"+q.toString();document.body.appendChild(script);
-  });
-}
-function postToGas(data){
-  const form=document.createElement("form");form.method="POST";form.action=CONFIG.GAS_URL;form.target="postFrame";form.style.display="none";
-  Object.entries(data).forEach(([k,v])=>{const i=document.createElement("input");i.type="hidden";i.name=k;i.value=v??"";form.appendChild(i)});
-  document.body.appendChild(form);form.submit();form.remove();
-}
+function todayStr(){const t=new Date();return new Date(t.getTime()-t.getTimezoneOffset()*60000).toISOString().slice(0,10)}
 async function loadRecords(){
   showMsg("listMessage","목록을 불러오는 중...");
   try{
-    const data=await jsonp({action:"list",auth:hash4(CONFIG.TEACHER_PASSWORD)});
-    if(!data.ok)throw new Error(data.message||"목록을 불러오지 못했습니다.");
-    records=data.records||[];renderList();$("listMessage").hidden=true;
-  }catch(e){showMsg("listMessage",e.message,true)}
+    const snap=await getDocs(query(collection(db,"absences"),orderBy("createdAt","desc")));
+    records=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderList();$("listMessage").hidden=true;
+  }catch(e){console.error(e);showMsg("listMessage","목록을 불러오지 못했습니다. ("+(e.code||e.message)+")",true)}
 }
 function renderList(){
   const g=$("gradeFilter").value,c=$("classFilter").value;
@@ -33,8 +23,8 @@ function renderList(){
   if(detailEl.parentElement===$("list")) $("app").appendChild(detailEl);
   $("list").innerHTML=filtered.length?filtered.map(r=>`
     <div class="item" data-id="${escapeHtml(r.id)}">
-      <div class="item-top"><span>${escapeHtml(r.studentNo)} ${escapeHtml(r.studentName)}</span><span class="status ${r.status==="확인완료"?"done":""}">${escapeHtml(r.status||"확인대기")}</span></div>
-      <div>${escapeHtml(r.startDate)} ~ ${escapeHtml(r.endDate)} · ${escapeHtml(r.reasonType)}</div>
+      <div class="item-top"><span>${escapeHtml(r.studentNo)} ${escapeHtml(r.studentName)}</span><span class="status ${r.status==="확인완료"?"done":""}">${r.status==="확인완료"?"확인완료":"확인대기"}</span></div>
+      <div>${escapeHtml(r.startDate)} ~ ${escapeHtml(r.endDate)} · ${escapeHtml(r.reasonType)}${r.evidenceYes==="Y"?" · 증빙있음":""}</div>
       <div class="hint">제출일 ${escapeHtml(r.submitDate)}</div>
     </div>`).join(""):"<div class='card'>제출된 결석신고서가 없습니다.</div>";
   document.querySelectorAll(".item").forEach(x=>x.addEventListener("click",()=>openDetail(x.dataset.id, x)));
@@ -51,15 +41,18 @@ async function openDetail(id, itemEl){
   detailEl.hidden=false;
   if(itemEl) itemEl.insertAdjacentElement('afterend', detailEl);
   $("detailTitle").textContent=`${meta.studentNo} ${meta.studentName} · 결석신고서`;
+  $("evidenceBox").hidden=true;$("evidenceImg").removeAttribute("src");
   showMsg("detailMessage","상세 자료를 불러오는 중...");
+  current=meta;
   try{
-    const data=await jsonp({action:"detail",auth:hash4(CONFIG.TEACHER_PASSWORD),id});
-    if(!data.ok)throw new Error(data.message||"상세 자료를 불러오지 못했습니다.");
-    current=data.record;
-    document.querySelectorAll('input[name="checkMethod"]').forEach(x=>x.checked=(current.checkMethods||[]).includes(x.value));
-    $("checkExtra").value=current.checkExtra||"";$("detailMessage").hidden=true;
-    await drawForm(current);
-  }catch(e){showMsg("detailMessage",e.message,true)}
+    const f=await getDoc(doc(db,"files",id));
+    if(current!==meta)return;
+    Object.assign(meta,f.exists()?f.data():{});
+    document.querySelectorAll('input[name="checkMethod"]').forEach(x=>x.checked=(meta.checkMethods||[]).includes(x.value));
+    $("checkExtra").value=meta.checkExtra||"";$("detailMessage").hidden=true;
+    if(meta.evidenceData){$("evidenceImg").src=meta.evidenceData;$("evidenceBox").hidden=false;}
+    await drawForm(meta);
+  }catch(e){console.error(e);showMsg("detailMessage","상세 자료를 불러오지 못했습니다. ("+(e.code||e.message)+")",true)}
   detailEl.scrollIntoView({behavior:"smooth", block:"start"});
 }
 function drawText(ctx,text,x,y,size=28,align="left"){ctx.save();ctx.font=`${size}px "Noto Sans KR","Malgun Gothic",sans-serif`;ctx.fillStyle="#111";ctx.textAlign=align;ctx.textBaseline="middle";ctx.fillText(text,x,y);ctx.restore()}
@@ -149,47 +142,61 @@ async function drawForm(r){
 }
 function formatKorDate(s){return `${s.slice(0,4)}년 ${Number(s.slice(5,7))}월 ${Number(s.slice(8,10))}일`}
 async function drawSignature(ctx,data,x,y,w,h){try{const i=await loadImage(data);ctx.drawImage(i,x,y,w,h)}catch(e){}}
+function showApp(on){$("loginPanel").hidden=on;$("app").hidden=!on}
 $("loginBtn").addEventListener("click",async()=>{
-  if($("password").value!==CONFIG.TEACHER_PASSWORD){showMsg("loginError","비밀번호가 올바르지 않습니다.",true);return}
-  loggedIn=true;$("loginPanel").hidden=true;$("app").hidden=false;await loadRecords();
+  if(!configReady){showMsg("loginError","firebase.js의 firebaseConfig 값이 아직 입력되지 않았습니다.",true);return}
+  const pw=$("password").value.trim(); if(!pw){showMsg("loginError","비밀번호를 입력해주세요.",true);return}
+  $("loginBtn").disabled=true;
+  try{await signInWithEmailAndPassword(auth,TEACHER_EMAIL,pw+PASSWORD_SUFFIX);$("password").value="";$("loginError").hidden=true}
+  catch(e){console.error(e);showMsg("loginError",e.code==="auth/too-many-requests"?"시도가 너무 많습니다. 잠시 후 다시 시도해주세요.":e.code==="auth/network-request-failed"?"인터넷 연결을 확인해주세요.":"비밀번호가 올바르지 않습니다.",true)}
+  finally{$("loginBtn").disabled=false}
 });
+// 로그인 상태는 브라우저에 유지되므로 다시 접속하면 자동으로 목록이 열립니다.
+onAuthStateChanged(auth,user=>{
+  if(user&&user.email===TEACHER_EMAIL){showApp(true);loadRecords()}
+  else{showApp(false);records=[];current=null;$("list").innerHTML="";$("detail").hidden=true}
+});
+$("logoutBtn").addEventListener("click",()=>signOut(auth));
 $("password").addEventListener("keydown",e=>{if(e.key==="Enter")$("loginBtn").click()});
 $("gradeFilter").addEventListener("change",renderList);$("classFilter").addEventListener("change",renderList);$("reloadBtn").addEventListener("click",loadRecords);
 $("closeDetail").addEventListener("click",()=>{$("detail").hidden=true;$("list").hidden=false;current=null});
-$("saveCheck").addEventListener("click",()=>{
-  if(!current)return;
+$("saveCheck").addEventListener("click",async()=>{
+  if(!current)return;const r=current;
   const methods=[...document.querySelectorAll('input[name="checkMethod"]:checked')].map(x=>x.value);
-  postToGas({action:"updateCheck",auth:hash4(CONFIG.TEACHER_PASSWORD),id:current.id,methods:methods.join("|"),extra:$("checkExtra").value.trim()});
-  current.checkMethods=methods;current.checkExtra=$("checkExtra").value.trim();current.checkDate=new Date().toISOString().slice(0,10);drawForm(current);
-  showMsg("detailMessage","확인내용 저장 요청을 보냈습니다.");
+  const data={checkMethods:methods,checkExtra:$("checkExtra").value.trim(),checkDate:todayStr()};
+  showMsg("detailMessage","저장 중...");
+  try{await updateDoc(doc(db,"absences",r.id),data);Object.assign(r,data);await drawForm(r);showMsg("detailMessage","확인내용을 저장했습니다.")}
+  catch(e){console.error(e);showMsg("detailMessage","저장하지 못했습니다. ("+(e.code||e.message)+")",true)}
 });
-$("toggleDone").addEventListener("click",()=>{
-  if(!current)return;const next=current.status==="확인완료"?"대기":"확인완료";
-  postToGas({action:"toggleStatus",auth:hash4(CONFIG.TEACHER_PASSWORD),id:current.id,status:next});
-  current.status=next;drawForm(current);renderList();showMsg("detailMessage",`상태를 ${next==="확인완료"?"확인 완료":"확인 대기"}로 변경했습니다.`);
+$("toggleDone").addEventListener("click",async()=>{
+  if(!current)return;const r=current;const next=r.status==="확인완료"?"대기":"확인완료";
+  try{await updateDoc(doc(db,"absences",r.id),{status:next});r.status=next;renderList();showMsg("detailMessage",`상태를 ${next==="확인완료"?"확인 완료":"확인 대기"}로 변경했습니다.`)}
+  catch(e){console.error(e);showMsg("detailMessage","상태를 바꾸지 못했습니다. ("+(e.code||e.message)+")",true)}
 });
 $("deleteBtn").addEventListener("click",()=>{
   if(!current)return;
-  $("detailMessage").hidden=false;
+  $("detailMessage").hidden=false;$("detailMessage").className="message";
   $("detailMessage").textContent="삭제는 되돌릴 수 없습니다. 아래 입력란에 DELETE를 입력하면 삭제됩니다.";
-  let box=document.getElementById("deleteConfirm");
-  if(!box){
-    box=document.createElement("div");
-    box.id="deleteConfirm";
-    box.innerHTML='<input id="deleteWord" placeholder="DELETE"><button id="reallyDelete" class="danger" type="button">삭제 확정</button>';
-    $("detailMessage").appendChild(box);
-    box.querySelector("#reallyDelete").addEventListener("click",()=>{
-      if($("deleteWord").value!=="DELETE"){
-        showMsg("detailMessage","DELETE를 정확히 입력해주세요.",true);
-        return;
-      }
-      postToGas({action:"delete",auth:hash4(CONFIG.TEACHER_PASSWORD),id:current.id});
-      records=records.filter(r=>r.id!==current.id);
+  const box=document.createElement("div");
+  box.innerHTML='<input id="deleteWord" placeholder="DELETE"><button id="reallyDelete" class="danger" type="button">삭제 확정</button>';
+  $("detailMessage").appendChild(box);
+  box.querySelector("#reallyDelete").addEventListener("click",async()=>{
+    if($("deleteWord").value!=="DELETE"){$("deleteWord").focus();return}
+    const r=current;if(!r)return;
+    try{
+      const batch=writeBatch(db);batch.delete(doc(db,"absences",r.id));batch.delete(doc(db,"files",r.id));await batch.commit();
+      records=records.filter(x=>x.id!==r.id);current=null;
       $("detail").hidden=true;$("list").hidden=false;renderList();
-    });
-  }
+    }catch(e){console.error(e);showMsg("detailMessage","삭제하지 못했습니다. ("+(e.code||e.message)+")",true)}
+  });
 });
 $("printBtn").addEventListener("click",()=>window.print());
 $("savePngBtn").addEventListener("click",()=>{
+  if(!current)return;
   $("formCanvas").toBlob(blob=>{const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`결석신고서_${current.studentNo}_${current.studentName}.png`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)},"image/png");
 });
+$("saveEvidenceBtn").addEventListener("click",()=>{
+  if(!current||!current.evidenceData)return;
+  const a=document.createElement("a");a.href=current.evidenceData;a.download=`증빙_${current.studentNo}_${current.studentName}.jpg`;a.click();
+});
+if(!configReady) showMsg("loginError","firebase.js의 firebaseConfig 값이 아직 입력되지 않았습니다.",true);
