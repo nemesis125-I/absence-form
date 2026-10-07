@@ -36,7 +36,10 @@
           </select>
         </label>
       </div>
-      <button id="reloadBtn" class="secondary" type="button">목록 새로고침</button>
+      <div class="button-row">
+        <button id="reloadBtn" class="secondary" type="button">목록 새로고침</button>
+        <button id="logoutBtn" class="secondary" type="button">로그아웃</button>
+      </div>
     </div>
 
     <div id="listMessage" class="message" hidden></div>
@@ -73,12 +76,18 @@
         </div>
         <p id="detailMessage" class="message" hidden></p>
       </div>
+
+      <div id="evidenceBox" class="card inner" hidden>
+        <h3>증빙사진</h3>
+        <img id="evidenceImg" alt="증빙사진" style="display:block;max-width:100%;height:auto;border:1px solid #ddd;border-radius:8px">
+        <div class="button-row">
+          <button id="saveEvidenceBtn" class="secondary" type="button">증빙사진 저장</button>
+        </div>
+      </div>
     </section>
   </section>
 </main>
 
-<iframe name="postFrame" id="postFrame" class="hidden-frame" title="전송용"></iframe>
-<script src="config.js"></script>
-<script src="teacher.js"></script>
+<script type="module" src="teacher.js"></script>
 </body>
 </html>

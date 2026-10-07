@@ -1,4 +1,23 @@
-# 결석신고서 웹 시스템 1차 버전
+# 결석신고서 웹 시스템
+
+## 전체 구조 (Firebase)
+
+- 학생/교사용 화면: GitHub Pages (`index.html`, `teacher.html`)
+- 데이터: Firebase Firestore (`absences` 목록용 정보, `files` 서명·증빙사진)
+- 교사 로그인: Firebase Authentication (이메일/비밀번호)
+- 원본 양식: `form.png` (1190×1682 PNG에 Canvas로 글자·동그라미·서명을 그림)
+
+## 설정
+
+1. `firebase.js`의 `firebaseConfig`에 Firebase 콘솔 → 프로젝트 설정 → 내 앱 → SDK 설정 값을 붙여넣습니다.
+   (공개되어도 되는 값입니다. 데이터 보호는 Firestore 보안 규칙이 담당합니다.)
+2. `firebase.js`의 `TEACHER_EMAIL`은 Authentication에 만든 교사 계정, 보안 규칙의 `isTeacher()` 이메일과 같아야 합니다.
+3. 교사 화면에서는 4자리 비밀번호만 입력하고, 코드가 뒤에 `PASSWORD_SUFFIX`를 붙여 Firebase에 로그인합니다.
+4. 증빙사진은 브라우저에서 최대 1280px JPEG로 압축해 Firestore 문서에 저장합니다. (Cloud Storage 미사용)
+
+## 이전 방식 (백업)
+
+아래는 Firebase 이전 전의 Google Apps Script 방식 설명입니다. `config.js`에 웹 앱 주소가 기록으로 남아 있습니다.
 
 ## 전체 구조
 
@@ -34,12 +53,7 @@
 
 ## 4. 비밀번호 해시
 
-프론트엔드의 `hash4("4341")` 결과를 브라우저 개발자도구에서 확인하거나,
-간단히 아래 코드를 실행하여 얻습니다.
-
-`console.log(hash4("4341"))` → `10a4c087`
-
-그 값을 Apps Script의 `TEACHER_PASSWORD_HASH`에 넣습니다.
+교사 비밀번호의 `hash4()` 결과를 Apps Script의 `TEACHER_PASSWORD_HASH`에 넣습니다.
 
 ## 5. GitHub Pages
 
