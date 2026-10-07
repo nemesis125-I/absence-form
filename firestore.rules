@@ -1,0 +1,44 @@
+// Firestore 보안 규칙 (Firebase 콘솔 → Firestore Database → 규칙 탭에 붙여넣고 '게시')
+// 이 파일은 사이트에서 쓰이지 않는 보관용 사본입니다.
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isTeacher() {
+      return request.auth != null
+        && request.auth.token.email == "teacher@example.com";
+    }
+
+    match /absences/{id} {
+      allow read, update, delete: if isTeacher();
+      allow create: if request.resource.data.keys().hasOnly([
+          'createdAt','studentNo','grade','classNo','number','studentName',
+          'reasonType','reasonDetail','startDate','endDate','absenceDays',
+          'submitDate','evidenceYes','evidenceTitle','studentSigner','guardianName',
+          'checkMethods','checkExtra','checkDate','status'])
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.status == '대기'
+        && request.resource.data.studentNo is string
+        && request.resource.data.studentNo.matches('^[0-9]{5}$')
+        && request.resource.data.studentName is string
+        && request.resource.data.studentName.size() <= 50
+        && request.resource.data.reasonDetail is string
+        && request.resource.data.reasonDetail.size() <= 1000
+        && (!('evidenceTitle' in request.resource.data)
+            || (request.resource.data.evidenceTitle is string
+                && request.resource.data.evidenceTitle.size() <= 100));
+    }
+
+    match /files/{id} {
+      allow read, update, delete: if isTeacher();
+      allow create: if request.resource.data.keys().hasOnly(
+          ['studentSignData','guardianSignData','evidenceData'])
+        && request.resource.data.studentSignData is string
+        && request.resource.data.guardianSignData is string
+        && request.resource.data.studentSignData.size() < 200000
+        && request.resource.data.guardianSignData.size() < 200000
+        && (!('evidenceData' in request.resource.data)
+            || request.resource.data.evidenceData.size() < 600000);
+    }
+  }
+}

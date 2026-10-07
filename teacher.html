@@ -56,7 +56,14 @@
       </div>
 
       <div class="card inner">
-        <h3>담임교사 확인</h3>
+        <h3>결석 사유 구분</h3>
+        <div class="checks">
+          <label><input type="radio" name="reasonFix" value="질병"> 질병</label>
+          <label><input type="radio" name="reasonFix" value="인정"> 인정(경조사 포함)</label>
+        </div>
+        <p class="hint">학생이 잘못 선택한 경우 바꾸면 바로 저장됩니다.</p>
+
+        <h3 style="margin-top:20px">담임교사 확인</h3>
         <div class="checks">
           <label><input type="checkbox" name="checkMethod" value="학부모 전화 통화"> 학부모 전화 통화</label>
           <label><input type="checkbox" name="checkMethod" value="보호자 문자 확인"> 보호자 문자 확인</label>
@@ -66,6 +73,9 @@
         </div>
         <label>추가 내용
           <textarea id="checkExtra" rows="3" maxlength="500"></textarea>
+        </label>
+        <label>확인 일자
+          <input id="checkDate" type="date">
         </label>
         <div class="button-row">
           <button id="saveCheck" class="primary" type="button">확인내용 저장</button>
