@@ -41,7 +41,7 @@ function setupSignature(canvas){
   const ctx=canvas.getContext("2d"); let drawing=false, has=false;
   function pos(e){const r=canvas.getBoundingClientRect(),p=e.touches?e.touches[0]:e;return{x:(p.clientX-r.left)*canvas.width/r.width,y:(p.clientY-r.top)*canvas.height/r.height}}
   function down(e){drawing=true;has=true;const p=pos(e);ctx.beginPath();ctx.moveTo(p.x,p.y);e.preventDefault();}
-  function move(e){if(!drawing)return;const p=pos(e);ctx.lineWidth=5;ctx.lineCap="round";ctx.lineJoin="round";ctx.lineTo(p.x,p.y);ctx.stroke();e.preventDefault();}
+  function move(e){if(!drawing)return;const p=pos(e);ctx.lineWidth=14;ctx.lineCap="round";ctx.lineJoin="round";ctx.lineTo(p.x,p.y);ctx.stroke();e.preventDefault();}
   function up(){drawing=false}
   canvas.addEventListener("pointerdown",down);canvas.addEventListener("pointermove",move);canvas.addEventListener("pointerup",up);canvas.addEventListener("pointercancel",up);
   return {clear(){ctx.clearRect(0,0,canvas.width,canvas.height);has=false},data(){if(!has)return "";const c=document.createElement("canvas");c.width=canvas.width/2;c.height=canvas.height/2;c.getContext("2d").drawImage(canvas,0,0,c.width,c.height);return c.toDataURL("image/png")}};
