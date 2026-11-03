@@ -1,4 +1,5 @@
 import { db, configReady } from "./firebase.js";
+import { countSchoolDays } from "./schooldays.js";
 import { collection, doc, writeBatch, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const $ = id => document.getElementById(id);
@@ -19,26 +20,11 @@ $("studentNo").addEventListener("input", e=>{
   const p=parseStudentNo(e.target.value);
   $("classPreview").textContent=p ? `${p.grade}학년 ${p.cls}반 ${p.no}번` : "학번 5자리를 입력하세요. 예: 30512";
 });
-function isHoliday(d){
-  const y=d.getFullYear(), m=d.getMonth()+1, day=d.getDate();
-  const key=`${y}-${String(m).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
-  const holidays = new Set([
-    "2026-01-01","2026-02-16","2026-02-17","2026-02-18","2026-03-01","2026-03-02",
-    "2026-05-05","2026-05-24","2026-05-25","2026-06-06","2026-08-15","2026-08-17",
-    "2026-09-24","2026-09-25","2026-09-26","2026-10-03","2026-10-05","2026-10-09","2026-12-25",
-    "2027-01-01","2027-02-06","2027-02-07","2027-02-08","2027-02-09","2027-03-01",
-    "2027-05-05","2027-05-13","2027-08-15","2027-08-16","2027-09-14","2027-09-15","2027-09-16",
-    "2027-10-03","2027-10-04","2027-10-09","2027-10-11","2027-12-25","2027-12-27"
-  ]);
-  return d.getDay()===0 || d.getDay()===6 || holidays.has(key);
-}
 function calcDays(){
   const s=$("startDate").value,e=$("endDate").value;
   if(!s||!e) return;
-  const start=new Date(s+"T00:00:00"), end=new Date(e+"T00:00:00");
-  if(end<start){ $("absenceDays").value=""; $("daysHint").textContent="종료일은 시작일보다 빠를 수 없습니다."; return; }
-  let n=0;
-  for(let d=new Date(start);d<=end;d.setDate(d.getDate()+1)) if(!isHoliday(d)) n++;
+  const n=countSchoolDays(s,e);
+  if(n===null){ $("absenceDays").value=""; $("daysHint").textContent="종료일은 시작일보다 빠를 수 없습니다."; return; }
   $("absenceDays").value=n;
   $("daysHint").textContent=`주말·공휴일 제외 자동 계산: ${n}일. 재량휴업일 등은 직접 수정하세요.`;
 }
