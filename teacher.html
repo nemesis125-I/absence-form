@@ -56,12 +56,36 @@
       </div>
 
       <div class="card inner">
-        <h3>결석 사유 구분</h3>
+        <h3>학생 입력 내용 수정</h3>
+        <p class="hint">학생이 잘못 입력한 경우 고친 뒤 "수정 내용 저장"을 누르세요. 고치는 동안 위 양식에 바로 반영됩니다.</p>
         <div class="checks">
           <label><input type="radio" name="reasonFix" value="질병"> 질병</label>
           <label><input type="radio" name="reasonFix" value="인정"> 인정(경조사 포함)</label>
         </div>
-        <p class="hint">학생이 잘못 선택한 경우 바꾸면 바로 저장됩니다.</p>
+        <label>사유 상세
+          <textarea id="editReasonDetail" rows="3" maxlength="500"></textarea>
+        </label>
+        <div class="stack">
+          <label>결석 시작일
+            <input id="editStartDate" type="date">
+          </label>
+          <label>결석 종료일
+            <input id="editEndDate" type="date">
+          </label>
+        </div>
+        <div class="stack">
+          <label>결석 일수
+            <input id="editAbsenceDays" type="number" min="1" step="1">
+          </label>
+          <label>작성일(제출일)
+            <input id="editSubmitDate" type="date">
+          </label>
+        </div>
+        <p id="editDaysHint" class="hint">날짜를 바꾸면 주말·공휴일을 빼고 일수를 다시 계산합니다. 재량휴업일 등은 직접 고치세요.</p>
+        <div class="button-row">
+          <button id="saveEdit" class="primary" type="button">수정 내용 저장</button>
+          <button id="resetEdit" class="secondary" type="button">되돌리기</button>
+        </div>
 
         <h3 style="margin-top:20px">담임교사 확인</h3>
         <div class="checks">

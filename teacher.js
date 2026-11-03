@@ -1,4 +1,5 @@
 import { app, db, configReady, TEACHER_EMAIL, PASSWORD_SUFFIX } from "./firebase.js";
+import { countSchoolDays } from "./schooldays.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { collection, doc, getDoc, getDocs, query, orderBy, updateDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -50,10 +51,10 @@ async function openDetail(id, itemEl){
     Object.assign(meta,f.exists()?f.data():{});
     document.querySelectorAll('input[name="checkMethod"]').forEach(x=>x.checked=(meta.checkMethods||[]).includes(x.value));
     $("checkExtra").value=meta.checkExtra||"";syncExtra();$("checkDate").value=meta.checkDate||todayStr();
-    document.querySelectorAll('input[name="reasonFix"]').forEach(x=>x.checked=x.value===meta.reasonType);
+    fillEdit(meta);
     $("detailMessage").hidden=true;
     if(meta.evidenceData){$("evidenceImg").src=meta.evidenceData;$("evidenceBox").hidden=false;}
-    await drawForm(meta);
+    await drawForm(preview());
   }catch(e){console.error(e);showMsg("detailMessage","상세 자료를 불러오지 못했습니다. ("+(e.code||e.message)+")",true)}
   detailEl.scrollIntoView({behavior:"smooth", block:"start"});
 }
@@ -168,20 +169,49 @@ $("saveCheck").addEventListener("click",async()=>{
   const methods=[...document.querySelectorAll('input[name="checkMethod"]:checked')].map(x=>x.value);
   const data={checkMethods:methods,checkExtra:methods.includes("기타")?$("checkExtra").value.trim():"",checkDate:$("checkDate").value||todayStr()};
   showMsg("detailMessage","저장 중...");
-  try{await updateDoc(doc(db,"absences",r.id),data);Object.assign(r,data);await drawForm(r);showMsg("detailMessage","확인내용을 저장했습니다.")}
+  try{await updateDoc(doc(db,"absences",r.id),data);Object.assign(r,data);await drawForm(preview());showMsg("detailMessage","확인내용을 저장했습니다.")}
   catch(e){console.error(e);showMsg("detailMessage","저장하지 못했습니다. ("+(e.code||e.message)+")",true)}
 });
 // '기타'를 체크했을 때만 기타 내용 칸을 보여줌
 const etcBox=document.querySelector('input[name="checkMethod"][value="기타"]');
 function syncExtra(){$("checkExtraWrap").hidden=!etcBox.checked}
 etcBox.addEventListener("change",()=>{syncExtra();if(etcBox.checked)$("checkExtra").focus()});
-// 확인 일자를 바꾸면 미리보기에 바로 반영 (저장은 "확인내용 저장" 버튼)
-$("checkDate").addEventListener("change",()=>{if(current)drawForm({...current,checkDate:$("checkDate").value})});
-document.querySelectorAll('input[name="reasonFix"]').forEach(x=>x.addEventListener("change",async()=>{
-  if(!current||!x.checked)return;const r=current,prev=r.reasonType;
-  try{await updateDoc(doc(db,"absences",r.id),{reasonType:x.value});r.reasonType=x.value;renderList();await drawForm({...r,checkDate:$("checkDate").value});showMsg("detailMessage",`결석 사유를 '${x.value}'(으)로 수정했습니다.`)}
-  catch(e){console.error(e);document.querySelectorAll('input[name="reasonFix"]').forEach(y=>y.checked=y.value===prev);showMsg("detailMessage","사유를 수정하지 못했습니다. ("+(e.code||e.message)+")",true)}
-}));
+// 학생 입력 내용 수정: 입력칸 ↔ 레코드
+const EDIT_FIELDS={reasonDetail:"editReasonDetail",startDate:"editStartDate",endDate:"editEndDate",absenceDays:"editAbsenceDays",submitDate:"editSubmitDate"};
+function fillEdit(r){
+  document.querySelectorAll('input[name="reasonFix"]').forEach(x=>x.checked=x.value===r.reasonType);
+  for(const [k,id] of Object.entries(EDIT_FIELDS)) $(id).value=r[k]??"";
+}
+function readEdit(){
+  const checked=document.querySelector('input[name="reasonFix"]:checked');
+  return {reasonType:checked?checked.value:current.reasonType, reasonDetail:$("editReasonDetail").value.trim(),
+    startDate:$("editStartDate").value, endDate:$("editEndDate").value,
+    absenceDays:Number($("editAbsenceDays").value), submitDate:$("editSubmitDate").value};
+}
+// 저장 전 수정 내용과 확인 일자까지 반영한 미리보기용 레코드
+function preview(){return {...current,...readEdit(),checkDate:$("checkDate").value}}
+function redraw(){if(current)drawForm(preview())}
+function recalcEditDays(){
+  const s=$("editStartDate").value,e=$("editEndDate").value; if(!s||!e)return;
+  const n=countSchoolDays(s,e);
+  if(n===null){$("editDaysHint").textContent="종료일은 시작일보다 빠를 수 없습니다.";return}
+  $("editAbsenceDays").value=n;$("editDaysHint").textContent=`주말·공휴일 제외 자동 계산: ${n}일. 재량휴업일 등은 직접 고치세요.`;
+}
+$("editStartDate").addEventListener("change",()=>{recalcEditDays();redraw()});
+$("editEndDate").addEventListener("change",()=>{recalcEditDays();redraw()});
+["editReasonDetail","editAbsenceDays","editSubmitDate","checkDate"].forEach(id=>$(id).addEventListener("input",redraw));
+document.querySelectorAll('input[name="reasonFix"]').forEach(x=>x.addEventListener("change",redraw));
+$("resetEdit").addEventListener("click",()=>{if(!current)return;fillEdit(current);redraw();showMsg("detailMessage","저장된 내용으로 되돌렸습니다.")});
+$("saveEdit").addEventListener("click",async()=>{
+  if(!current)return;const r=current,data=readEdit();
+  if(!data.reasonDetail){showMsg("detailMessage","사유 상세를 입력해주세요.",true);return}
+  if(!data.startDate||!data.endDate||!data.submitDate){showMsg("detailMessage","날짜를 모두 입력해주세요.",true);return}
+  if(data.endDate<data.startDate){showMsg("detailMessage","종료일은 시작일보다 빠를 수 없습니다.",true);return}
+  if(!(data.absenceDays>=1)){showMsg("detailMessage","결석 일수를 확인해주세요.",true);return}
+  showMsg("detailMessage","저장 중...");
+  try{await updateDoc(doc(db,"absences",r.id),data);Object.assign(r,data);renderList();await drawForm(preview());showMsg("detailMessage","학생 입력 내용을 수정했습니다.")}
+  catch(e){console.error(e);showMsg("detailMessage","수정하지 못했습니다. ("+(e.code||e.message)+")",true)}
+});
 $("toggleDone").addEventListener("click",async()=>{
   if(!current)return;const r=current;const next=r.status==="확인완료"?"대기":"확인완료";
   try{await updateDoc(doc(db,"absences",r.id),{status:next});r.status=next;renderList();showMsg("detailMessage",`상태를 ${next==="확인완료"?"확인 완료":"확인 대기"}로 변경했습니다.`)}
